@@ -1,0 +1,86 @@
+####################################
+#### File   #####
+#### Module: 'your name '   #####
+####################################
+# Filename: 
+# Environment: QA
+# Author: rguttu001c
+# Filebeat Version: 7.16.3
+# Filebeat Output: XXX
+# Date: 2019-01-30
+# History:
+#
+####################################
+
+filebeat.prospectors:
+
+- input_type: log
+  paths:
+    - /var/log/gnatsd/gnatsd.log
+  fields:
+    log_type: vista-gnatsd
+  fields_under_root: true
+
+- input_type: log
+  paths:
+    -  /opt/trafficserver/var/log/trafficserver/diags.log
+  fields:
+    log_type: vista-diags
+  fields_under_root: true
+
+- input_type: log
+  paths:
+    - /opt/vista/var/log/rtspMaster.log
+  fields:
+    log_type: vista-rtspmaster
+  multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+  multiline.negate: true
+  multiline.match: after
+  fields_under_root: true
+  exclude_lines: ['Level=Debug', 'Level=Trace', 'Write Queue Closed. Exit Connection Writer', 'Server Received Connect on Port 554 from', 'No Forwarding Required for Pump RTSP Response, Discard Message']
+
+- input_type: log
+  paths:
+    - /opt/vista/var/log/pump*.log
+  fields:
+    log_type: vista-pump
+  multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+  multiline.negate: true
+  multiline.match: after
+  fields_under_root: true
+  exclude_lines: ['Level=Debug', 'Level=Trace']
+
+- input_type: log
+  paths:
+    - /var/log/messages
+  fields:
+    log_type: vista-messages
+  fields_under_root: true
+  exclude_lines: ['nrpe', 'systemd: Started Session', 'systemd: Starting Session', 'systemd: Stopping user', 'systemd: Stopping User', 'systemd: Created slice user', 'systemd: Created slice User', 'systemd: Starting user', 'systemd: Starting User', 'systemd: Removed slice user', 'systemd: Removed slice User', 'Please remove executable permission bits. Proceeding anyway']
+
+- input_type: log
+  paths:
+    - /opt/trafficserver/var/log/trafficserver/custom_ats_2.log
+  fields:
+    log_type: vista-custom_ats_2
+  fields_under_root: true
+  exclude_lines: ['traffic_monitor']
+  processors:
+  - dissect:
+      tokenizer: '%{timesstamp} chi=%{chi} shn=%{shn} url=%{url} rng="bytes=%{byterange}" cqhm=%{cqhm} pssc=%{pssc} ttms=%{ttms} b=%{bytes} sssc=%{sssc} sscl=%{sscl} cfsc=%{cfsc} pfsc=%{pfsc} crc=%{crc} phr=%{phr} uas="%{uas}" xmt="trace-id=%{traceid};parent-id=${parentid};span-id=${spanid}"'
+      targe_prefix: ""
+
+#----------------------------- Logstash output --------------------------------
+output.kafka:
+  hosts: [ "XXXX:9092" ]
+  topic: "raw.ch2.vista.qa.%{[log_type]}"
+  keep_alive: 10
+  worker: 1
+  # version value should be according to FB version
+  # FB v6.5.4 = 2.0.0; FB 6.2.4 = 0.11.0.0
+  version: 2.0.0
+  compression: "snappy"
+  # client_id: "vista-qa-%{[beat][name]}"
+  max_message_bytes: 2000000
+
+#logging.level: debug
