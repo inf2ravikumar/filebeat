@@ -1,0 +1,83 @@
+##
+# Install Filebeat using the atlas repos or download a specific version from Elastic.
+# 1) Install RPM from Atlas
+# ensure atlas yum repos are configured on your system before attempting:
+# (yum info filebeat - provides latest version available on atlas repos)
+# yum install filebeat or deploy according to your automation
+#
+# 2) Install RPM from Elastic
+# curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.4.2-x86_64.rpm
+# deploy RPM according to your automation
+#
+##
+
+# If you need a particular in-built template from Filebeat, you can enable this
+# -OR- you can contact the Tritos team to load it for you.
+# Enabling this parameter slows the app startup and may impact overall performance - YMMV
+# disable template configuration for ES
+setup.template.enabled: false
+
+# disable ILM detection if not using ILM policies
+# setup.ilm.enabled: false
+
+# NOTE: Please request the DaaS team to configure index templates and ILM policy definitions
+# when routing multiple inputs to unique indexes with specific ILM policies
+# configuration to override default value (works as a global setting)
+# uncomment if index mapping templates are not created/used 
+#setup.ilm.policy_name: daas_standard_policy
+
+# turn on additional logging if needed
+#logging.level: debug
+
+# main filebeat input config
+filebeat.inputs:
+
+# one section per log file you want to collect
+- input_type: log
+  # list of paths to monitor for this input
+  paths:
+    - /var/log/folder/special.log
+    # look at container logs too
+    - /var/lib/docker/containers/*/*.log
+  # custom fields section; add additional fields here
+  fields:
+  # log_type is used by DaaS for routing - must match the index name prefix
+    log_type: usecase-special
+  # places the log_type field in the json root object
+  fields_under_root: true
+  # the field to extract a JSON message from
+  json.message_key: log
+  # place the decoded JSON message under the root JSON objects that Filebeat creates
+  json.keys_under_root: true
+  # list of processors to apply for this input; further info below
+  # https://www.elastic.co/guide/en/beats/filebeat/master/filtering-and-enhancing-data.html
+  processors:
+  # example is to add docker container metadata, if looking at container logs
+  - add_docker_metadata: ~
+
+# possible to use autodiscover for certain providers; more info in link below
+# https://www.elastic.co/blog/docker-and-kubernetes-hints-based-autodiscover-with-beats
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+
+
+output.elasticsearch:
+    hosts: ["es:9200"]
+    protocol: https
+    path: /es/
+    ssl.enabled: true
+    ssl.verification_mode: none
+    username: "filebeat_user"
+    password: "YOUR_PASSWORD"
+    # Using ILM.  Use this syntax to ingest data to an index pre-created by DAAS:
+    index: "%{[log_type]}"
+
+    # Use the following instead if you plan to manage and rotate your own index daily:
+    # You are on your own if you create indices in this manner.
+    # index: "%{[log_type]}-%{+yyyy.MM.dd}"
+
+    # Uncomment the following if using ingest pipeline
+    # pipeline: "<pipeline_name>"
+    # Multiple pipelines are supported, please see the DaaS team for help with this
