@@ -1,0 +1,46 @@
+# This Filebeat configuration is similar to "filebeat-shipper-to-ES_Easy.yml",
+# but with DEBUG enabled.
+# It helps you to troubleshoot in case of errors.
+
+logging.level: debug
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /app/<example>/*.log
+  fields:
+    log_type: daas-test
+    sourcetype: daas-test-prod
+  fields_under_root: true
+
+  # json.message_key: message
+  json.add_error_key: true
+  json.ignore_decoding_error: true
+  processors:
+  - decode_json_fields:
+      fields: ["message"]
+
+  # Uncomment the following json.keys line if you are ingesting JSON format,
+  # Elasticsearch will automatically parse JSON data into fields.
+  # json.keys_under_root: true
+
+filebeat.config.modules:
+  # Glob pattern for configuration loading
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+  # example is to add docker container metadata, if looking at container logs
+  - add_docker_metadata: ~
+  # - add_cloud_metadata: ~
+  # - add_host_metadata: ~
+setup.template.enabled: false
+setup.ilm.enabled: false
+
+
+output.elasticsearch:
+  enable: true
+  hosts: ["https:"]
+  protocol: https
+  ssl.enabled: true
+  ssl.verification_mode: none
+  index: "%{[log_type]}"
