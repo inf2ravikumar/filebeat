@@ -1,0 +1,68 @@
+
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+     - C:\*.log
+  multiline.pattern: '^<Msg([^>]*?)>(.*)'
+  multiline.negate: true
+  multiline.match: after
+  fields:
+   log_type: aegis-elk-sbx1-agssrvlogs
+  fields_under_root: true
+- type: log
+  enabled: true
+  paths:
+     - C:\\*\*.log
+  multiline.pattern: '^<Msg([^>]*?)>(.*)'
+  multiline.negate: true
+  multiline.match: after
+  fields:
+   log_type: bx1-agsserviceslogs
+  fields_under_root: true
+- type: log
+  enabled: true
+  paths:
+     - D:\portal\*.log
+  multiline.pattern: '^<Msg([^>]*?)>(.*)'
+  multiline.negate: true
+  multiline.match: after
+  fields:
+   log_type: sbx1-arcportallogs
+  fields_under_root: true
+- type: log
+  enabled: true
+  paths:
+     - D:\\*.dat-u
+  multiline.pattern: '^[0-9]{13}'
+  multiline.negate: true
+  multiline.match: after
+  fields:
+   log_type: agsstats
+- type: log
+  enabled: true
+  paths:
+     - D:\*.dat-i
+  multiline.pattern: ''
+  multiline.negate: true
+  multiline.match: after
+  fields:
+   log_type: alogs
+  fields_under_root: true
+filebeat.config.modules:
+  # Glob pattern for configuration loading
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+setup.template.enabled: false
+setup.ilm.enabled: false
+output.elasticsearch:
+    hosts: ["https:XXXX"]
+    protocol: https
+    path: /es/
+    ssl.enabled: true
+    ssl.verification_mode: none
+    index: "%{[log_type]}"
+    pipeline: "XXXXX" 
